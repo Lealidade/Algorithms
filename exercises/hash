@@ -68,6 +68,29 @@ class LEncadeada:
     # utilitário: insere no início (após a cabeça)
     def insira_no_inicio(self, x):
         self.insira(x, self.cabeca)
+    
+    def remove_todos(self, x):
+        """Remove todas as ocorrências de x nesta lista.
+        Retorna quantos nós foram removidos.
+        """
+        removidos = 0
+        ant = self.cabeca            # começa na cabeça sentinela
+        atual = ant.prox
+
+        while atual is not None:
+            if atual.data == x:
+                # pula o nó atual
+                ant.prox = atual.prox
+                # desaloca (opcional em Python, mas mantém a intenção)
+                tmp = atual
+                atual = atual.prox
+                del tmp
+                removidos += 1
+            else:
+                ant = atual
+                atual = atual.prox
+
+        return removidos
 
 # ---------- Tabela Hash com encadeamento ----------
 class TabelaHash:
@@ -122,6 +145,15 @@ class TabelaHash:
 
         desvio = math.sqrt(variancia)
         return media, desvio   
+    
+    def remove_todos(self, chave):
+        """Remove todas as ocorrências de 'chave' na tabela.
+        Retorna quantos itens foram removidos.
+        """
+        h = self._hash(chave)                 # só esse bucket importa
+        qtd = self.buckets[h].remove_todos(chave)
+        self.N -= qtd
+        return qtd
 
 # ---------- Experimento pedido ----------
 def experimento(N):
