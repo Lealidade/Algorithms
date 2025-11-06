@@ -1,0 +1,298 @@
+import random
+import math
+
+# ---------- do professor ----------
+class Dicio:
+    def __init__(self):
+        self.chave = []
+        self.codigo = []
+
+class Celula:
+    def __init__(self, data=None):
+        self.data = data
+        self.prox = None
+
+    def __str__(self):
+        if self.prox:
+            return f"{self.data} -> "
+        return f"{self.data} ."
+
+class LEncadeada:
+    def __init__(self):
+        self.cabeca = Celula()  # célula sentinela (prox == None)
+
+    def __str__(self):
+        s = ''
+        cel = self.cabeca.prox
+        while cel:
+            s += str(cel)
+            cel = cel.prox
+        return s
+
+    def busque(self, x):
+        ptr = self.cabeca.prox
+        while ptr and ptr.data != x:
+            ptr = ptr.prox
+        return ptr
+
+    def insira(self, x, cel):
+        nova = Celula(x)
+        nova.prox = cel.prox
+        cel.prox = nova
+
+    def remova(self, cel_ant):
+        ant = cel_ant
+        cel = ant.prox
+        ant.prox = cel.prox
+        del cel
+
+    def busque_e_remova(self, x):
+        p = self.cabeca
+        q = p.prox
+        while q and q.data != x:
+            p = q
+            q = q.prox
+        if q:
+            p.prox =  q.prox
+            del q
+
+    # utilitário: comprimento da lista (tamanho da cadeia)
+    def comprimento(self):
+        n = 0
+        p = self.cabeca.prox
+        while p:
+            n += 1
+            p = p.prox
+        return n
+
+    # utilitário: insere no início (após a cabeça)
+    def insira_no_inicio(self, x):
+        self.insira(x, self.cabeca)
+
+# ---------- Tabela Hash com encadeamento ----------
+class TabelaHash:
+    def __init__(self, M):
+        if M <= 0:
+            raise ValueError("M deve ser positivo.")
+        self.M = M
+        self.buckets = []
+        for _ in range(M):
+            self.buckets.append(LEncadeada())
+        self.N = 0
+
+    def _hash(self, x):
+        return x % self.M  # gera um hash tal que esteja no intervalo [0,...,M-1]
+
+    def insere(self, x):
+        h = self._hash(x)
+        self.buckets[h].insira_no_inicio(x)  # encadeamento por lista
+        self.N += 1
+
+    def min_max_cadeias(self):
+        # calcula min e max dos comprimentos das listas por bucket
+        min_len = float('inf')
+        max_len = 0
+        for lista in self.buckets:
+            L = lista.comprimento()
+            if L < min_len:
+                min_len = L
+            if L > max_len:
+                max_len = L
+        return min_len, max_len
+    
+# >>> ADICIONE ESTE MÉTODO <<<
+    def media_e_desvio(self, amostral=False):
+        # 1) média
+        soma = 0.0
+        for lista in self.buckets:
+            soma += lista.comprimento()
+        media = soma / self.M
+
+        # 2) variância
+        soma_quad = 0.0
+        for lista in self.buckets:
+            L = lista.comprimento()
+            diff = L - media
+            soma_quad += diff * diff
+
+        if amostral and self.M > 1:
+            variancia = soma_quad / (self.M - 1)   # desvio-padrão amostral
+        else:
+            variancia = soma_quad / self.M         # desvio-padrão populacional
+
+        desvio = math.sqrt(variancia)
+        return media, desvio   
+
+# ---------- Experimento pedido ----------
+def experimento(N):
+    M = N // 100
+    if M <= 0:
+        raise ValueError("Use N >= 100 para ter M > 0.")
+    tabela = TabelaHash(M)
+
+
+    for _ in range(N):
+        x = random.randrange(10**12)  # inteiro aleatório grande
+        tabela.insere(x)
+
+    menor, maior = tabela.min_max_cadeias()
+    return M, menor, maior, tabela
+
+def main():
+    for N in (10**3, 10**4, 10**5, 10**6):
+        M, menor, maior, _ = experimento(N)
+        print(f"N={N:,} | M={M:,} | menor cadeia={menor} | maior cadeia={maior}")
+
+if __name__ == "__main__":
+    main()
+
+
+# Passo a passo (N = 1000 ⇒ M = 10)
+# 1) Chamamos experimento(1000)
+
+# Dentro de experimento:
+
+# Calcula M = N // 100 ⇒ M = 10.
+
+# Cria a tabela: tabela = TabelaHash(M).
+
+# 2) Construção da TabelaHash(M)
+
+# __init__(self, M):
+
+# Guarda self.M = 10.
+
+# Cria self.buckets com 10 listas encadeadas, cada uma é uma LEncadeada() com cabeça sentinela (Celula() com prox=None).
+
+# “Cabeça sentinela” = uma célula especial no começo da lista, não guarda dado útil, só facilita operações (evita ifs para lista vazia).
+
+# Após isso, temos 10 buckets: índices 0..9, todos vazios (apenas a cabeça).
+
+# 3) Laço principal: inserir N=1000 chaves aleatórias
+
+# for _ in range(N):
+
+# Gera uma chave aleatória:
+
+# x = random.randrange(10**12)
+
+
+# Isso cria um inteiro grande (0 até 10¹²−1). O tamanho “grande” não muda a lógica — é só para simular entradas variadas.
+
+# Chama a inserção:
+
+# tabela.insere(x)
+
+# 4) O que acontece em tabela.insere(x)
+
+# Dentro de insere:
+
+# h = self._hash(x)          # calcula em qual bucket cai
+# self.buckets[h].insira_no_inicio(x)   # encadeia na lista do bucket
+# self.N += 1
+
+
+# A função _hash(x) faz:
+
+# return x % self.M
+
+
+# Como M = 10, h é o último dígito de x (0 a 9). Em geral, é sempre “o resto da divisão por M”.
+
+# Então, “resolver conflitos com lista encadeada” significa:
+
+# Se várias chaves gerarem o mesmo h, elas vão para a mesma lista (o bucket h).
+
+# Não sobrescrevemos nada: apenas encadeamos mais um nó nessa lista.
+
+# 5) O que acontece em insira_no_inicio(x) da LEncadeada
+
+# Sua LEncadeada tem:
+
+# def insira_no_inicio(self, x):
+#     self.insira(x, self.cabeca)  # insere após a cabeça sentinela
+
+
+# E a insira(x, cel) faz:
+
+# nova = Celula(x)     # cria um nó com o valor x
+# nova.prox = cel.prox # aponta a nova célula para o “antigo primeiro”
+# cel.prox = nova      # cabeça passa a apontar para a nova
+
+
+# Por que “insere no início”?
+
+# Porque estamos passando cel = self.cabeca.
+
+# A nova célula entra logo após a cabeça — isso é o “push-front” (O(1)).
+
+# Vantagem: não precisamos percorrer a lista para achar o fim; fica simples e rápido.
+
+# Resultado: dentro do bucket h, a lista pode ficar, por exemplo, x_novo -> x_antigo -> x_mais_antigo -> ...
+# A ordem de impressão fica “invertida” em relação à ordem de chegada (normal para push-front).
+
+# 6) Isso se repete 1000 vezes
+
+# A cada chave:
+
+# Geramos x.
+
+# Calculamos h = x % 10.
+
+# Encadeamos x no início da lista do bucket h.
+
+# No final:
+
+# Cada bucket i (0..9) tem uma lista com um certo comprimento (quantas chaves caíram ali).
+
+# A soma dos comprimentos de todos os buckets é 1000 (que é o total de inserções N).
+
+# 7) Medindo o que a questão pede (min/max das cadeias)
+
+# Chamamos algo como:
+
+# menor, maior = tabela.min_max_cadeias()
+
+
+# Esse método percorre os 10 buckets, e para cada LEncadeada:
+
+# Conta o tamanho via comprimento() (vai caminhando pelos nós com prox).
+
+# Atualiza min_len e max_len.
+
+# Assim obtemos:
+
+# menor cadeia = tamanho do bucket mais “leve”.
+
+# maior cadeia = tamanho do bucket mais “carregado”.
+
+# Com M=10 e N=1000, o fator de carga é α = N/M = 100, então os comprimentos ficam por volta de 100 (com variação aleatória). É comum ver algo tipo “mínimo ≈ 80–90” e “máximo ≈ 120–140”.
+
+# Mini traço de execução com um x qualquer (exemplo ilustrativo)
+
+# Suponha que numa iteração qualquer saiu:
+
+# x = 987654321234        # gerado por random.randrange(10**12)
+# h = x % 10              # = 4
+# tabela.buckets[4].insira_no_inicio(x)
+
+
+# Vamos ao bucket 4.
+
+# Criamos Celula(x).
+
+# Fazemos nova.prox = cabeça.prox (que era o antigo primeiro da lista 4).
+
+# Fazemos cabeça.prox = nova.
+
+# Fim: x é agora o primeiro nó do bucket 4.
+
+# Se, mais tarde, outra chave também der h=4, ela vira o novo primeiro, e x passa a ser o segundo, e assim por diante.
+
+# Por que isso “resolve colisões”
+
+# Se várias chaves têm o mesmo índice h, todas cabem: ficam encadeadas na lista daquele bucket.
+
+# Não perdemos dados e não sobrescrevemos nada.
+
+# Para buscar (se quisermos), basta percorrer a lista daquele bucket.
